@@ -3,6 +3,24 @@
 -- =====================================================
 
 -- =====================================================
+-- 0. 기존 테이블 삭제 (의존성 순서 고려)
+-- =====================================================
+
+-- 먼저 외래키 의존성이 있는 테이블부터 삭제
+DROP TABLE IF EXISTS public.shipments CASCADE;
+DROP TABLE IF EXISTS public.order_items CASCADE;
+DROP TABLE IF EXISTS public.orders CASCADE;
+DROP TABLE IF EXISTS public.cart_items CASCADE;
+DROP TABLE IF EXISTS public.carts CASCADE;
+DROP TABLE IF EXISTS public.user_addresses CASCADE;
+DROP TABLE IF EXISTS public.products CASCADE;
+DROP TABLE IF EXISTS public.categories CASCADE;
+DROP TABLE IF EXISTS public.users CASCADE;
+
+-- 시퀀스도 삭제
+DROP SEQUENCE IF EXISTS order_number_seq CASCADE;
+
+-- =====================================================
 -- 1. 테이블 생성
 -- =====================================================
 
@@ -182,9 +200,44 @@ CREATE INDEX IF NOT EXISTS idx_shipments_tracking ON public.shipments(tracking_n
 -- RLS 활성화
 ALTER TABLE public.shipments ENABLE ROW LEVEL SECURITY;
 
+-- 1.9 Categories 테이블
+CREATE TABLE IF NOT EXISTS public.categories (
+  id TEXT PRIMARY KEY,
+  name_ko TEXT NOT NULL,
+  name_en TEXT,
+  icon_color TEXT DEFAULT 'bg-gray-100',
+  display_order INT DEFAULT 0,
+  is_active BOOLEAN DEFAULT TRUE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 인덱스
+CREATE INDEX IF NOT EXISTS idx_categories_active ON public.categories(is_active);
+CREATE INDEX IF NOT EXISTS idx_categories_order ON public.categories(display_order);
+
+-- RLS 활성화 (읽기는 모두 가능, 쓰기는 service_role만)
+ALTER TABLE public.categories ENABLE ROW LEVEL SECURITY;
+
 -- =====================================================
 -- 2. Row Level Security (RLS) 정책
 -- =====================================================
+
+-- 기존 정책 삭제
+DROP POLICY IF EXISTS "Users can view own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can update own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.users;
+DROP POLICY IF EXISTS "Users can view own addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Users can insert own addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Users can update own addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Users can delete own addresses" ON public.user_addresses;
+DROP POLICY IF EXISTS "Anyone can view products" ON public.products;
+DROP POLICY IF EXISTS "Users can manage own cart" ON public.carts;
+DROP POLICY IF EXISTS "Users can manage own cart items" ON public.cart_items;
+DROP POLICY IF EXISTS "Users can view own orders" ON public.orders;
+DROP POLICY IF EXISTS "Users can view own order items" ON public.order_items;
+DROP POLICY IF EXISTS "Users can view own shipments" ON public.shipments;
+DROP POLICY IF EXISTS "Anyone can view categories" ON public.categories;
 
 -- 2.1 Users 테이블 정책
 CREATE POLICY "Users can view own profile" 
@@ -258,6 +311,11 @@ CREATE POLICY "Users can view own shipments"
     )
   );
 
+-- 2.9 Categories 테이블 정책
+CREATE POLICY "Anyone can view categories" 
+  ON public.categories FOR SELECT 
+  USING (true);
+
 -- =====================================================
 -- 3. 트리거 및 함수
 -- =====================================================
@@ -322,6 +380,15 @@ CREATE TRIGGER on_auth_user_created
 -- =====================================================
 -- 4. 샘플 데이터
 -- =====================================================
+
+-- 카테고리 데이터
+INSERT INTO public.categories (id, name_ko, name_en, icon_color, display_order, is_active) VALUES
+('electronics', '전자기기', 'Electronics', 'bg-blue-100', 1, true),
+('fashion', '패션', 'Fashion', 'bg-pink-100', 2, true),
+('beauty', '뷰티', 'Beauty', 'bg-green-100', 3, true),
+('sports', '스포츠', 'Sports', 'bg-yellow-100', 4, true),
+('home', '홈/리빙', 'Home & Living', 'bg-purple-100', 5, true)
+ON CONFLICT (id) DO NOTHING;
 
 -- 전자기기 카테고리
 INSERT INTO public.products (

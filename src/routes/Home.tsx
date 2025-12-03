@@ -1,39 +1,52 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { Product } from '../types/database'
+import type { Product, Category } from '../types/database'
 
 export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetchFeaturedProducts()
+    fetchData()
   }, [])
 
-  const fetchFeaturedProducts = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('is_active', true)
+        .order('display_order')
+
+      if (categoriesError) throw categoriesError
+      setCategories(categoriesData || [])
+
+      // Fetch featured products
+      const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
         .eq('is_active', true)
         .limit(6)
 
-      if (error) throw error
-      setFeaturedProducts(data || [])
+      if (productsError) throw productsError
+      setFeaturedProducts(productsData || [])
     } catch (error) {
-      console.error('Error fetching products:', error)
+      console.error('Error fetching data:', error)
+      // Set fallback categories if fetch fails
+      setCategories([
+        { id: 'electronics', name_ko: '전자기기', name_en: 'Electronics', icon_color: 'bg-blue-100', display_order: 1, is_active: true, created_at: null, updated_at: null },
+        { id: 'fashion', name_ko: '패션', name_en: 'Fashion', icon_color: 'bg-pink-100', display_order: 2, is_active: true, created_at: null, updated_at: null },
+        { id: 'beauty', name_ko: '뷰티', name_en: 'Beauty', icon_color: 'bg-green-100', display_order: 3, is_active: true, created_at: null, updated_at: null },
+        { id: 'sports', name_ko: '스포츠', name_en: 'Sports', icon_color: 'bg-yellow-100', display_order: 4, is_active: true, created_at: null, updated_at: null },
+        { id: 'home', name_ko: '홈/리빙', name_en: 'Home & Living', icon_color: 'bg-purple-100', display_order: 5, is_active: true, created_at: null, updated_at: null },
+      ])
     } finally {
       setLoading(false)
     }
   }
-
-  const categories = [
-    { name: '전자기기', slug: 'electronics', color: 'bg-blue-100' },
-    { name: '패션', slug: 'fashion', color: 'bg-pink-100' },
-    { name: '뷰티', slug: 'beauty', color: 'bg-green-100' },
-    { name: '스포츠', slug: 'sports', color: 'bg-yellow-100' },
-  ]
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -56,15 +69,15 @@ export default function Home() {
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">인기 카테고리</h2>
-        <div className="grid grid-cols-4 gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6">
           {categories.map((category) => (
             <Link
-              key={category.slug}
-              to={`/category/${category.slug}`}
+              key={category.id}
+              to={`/category/${category.id}`}
               className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
             >
-              <div className={`w-16 h-16 ${category.color} rounded-lg mb-4`}></div>
-              <h3 className="font-semibold">{category.name}</h3>
+              <div className={`w-16 h-16 ${category.icon_color || 'bg-gray-100'} rounded-lg mb-4 mx-auto`}></div>
+              <h3 className="font-semibold text-center">{category.name_ko}</h3>
             </Link>
           ))}
         </div>

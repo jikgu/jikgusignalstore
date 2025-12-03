@@ -1,7 +1,7 @@
 # spec.md – 직구 시그널 스토어 (Jikgu Signal Store) 기술 스펙
 
-> **문서 버전**: 1.0.0  
-> **최종 업데이트**: 20XX-XX-XX  
+> **문서 버전**: 1.1.0  
+> **최종 업데이트**: 2024-12-03  
 > **관련 문서**: `prd.md`, ERD, Swagger/OpenAPI 스펙  
 > **Vercel 프로젝트명**: `jikgusignalstore`
 
@@ -294,116 +294,282 @@ def checkout(body: CheckoutRequest):
 
 ---
 
-## 6. Supabase 데이터베이스 설계 (요약)
+## 6. Supabase 데이터베이스 설계
 
-### 6.1 주요 테이블
+### 6.1 주요 테이블 (9개)
 
+#### 1. users - 사용자 프로필
 ```sql
--- users
 create table public.users (
-  id            uuid primary key,      -- auth.users.id와 동일
-  email         text unique not null,
-  name          text,
-  phone         text,
-  created_at    timestamptz default now()
-);
-
--- user_addresses
-create table public.user_addresses (
-  id            bigserial primary key,
-  user_id       uuid references public.users(id),
-  recipient     text not null,
-  phone         text,
-  postal_code   text,
-  address_line1 text,
-  address_line2 text,
-  is_default    boolean default false,
-  created_at    timestamptz default now()
-);
-
--- products
-create table public.products (
-  id              bigserial primary key,
-  external_id     text,
-  mall_code       text,
-  name_ko         text,
-  name_original   text,
-  description_ko  text,
-  description_original text,
-  image_url       text,
-  currency        text,
-  price_original  numeric(18,2),
-  price_krw       numeric(18,2),
-  stock_status    text,
-  created_at      timestamptz default now()
-);
-
--- carts
-create table public.carts (
-  id            bigserial primary key,
-  user_id       uuid references public.users(id),
-  created_at    timestamptz default now()
-);
-
--- cart_items
-create table public.cart_items (
-  id            bigserial primary key,
-  cart_id       bigint references public.carts(id),
-  user_id       uuid references public.users(id),
-  product_id    bigint references public.products(id),
-  quantity      int not null,
-  price_krw     numeric(18,2),
-  created_at    timestamptz default now()
-);
-
--- orders
-create table public.orders (
-  id                   bigserial primary key,
-  order_number         text unique,
-  user_id              uuid references public.users(id),
-  status               text,
-  total_product_krw    numeric(18,2),
-  total_shipping_krw   numeric(18,2),
-  total_duty_krw       numeric(18,2),
-  total_fee_krw        numeric(18,2),
-  total_pay_krw        numeric(18,2),
-  created_at           timestamptz default now()
-);
-
--- order_items
-create table public.order_items (
-  id              bigserial primary key,
-  order_id        bigint references public.orders(id),
-  product_id      bigint references public.products(id),
-  mall_code       text,
-  external_id     text,
-  name_snapshot   text,
-  quantity        int,
-  unit_price_krw  numeric(18,2),
-  subtotal_krw    numeric(18,2)
-);
-
--- shipments
-create table public.shipments (
-  id              bigserial primary key,
-  order_id        bigint references public.orders(id),
-  tracking_number text,
-  carrier_code    text,
-  status          text,
-  origin_country  text,
-  destination_country text,
-  last_updated_at timestamptz,
-  raw_tracking    jsonb
+  id                       uuid primary key references auth.users(id),
+  email                    text unique not null,
+  name                     text,
+  phone                    text,
+  personal_customs_number  text,  -- 개인통관고유부호
+  created_at               timestamptz default now(),
+  updated_at               timestamptz default now()
 );
 ```
 
-### 6.2 RLS 개념
+#### 2. user_addresses - 배송 주소
+```sql
+create table public.user_addresses (
+  id            bigserial primary key,
+  user_id       uuid references public.users(id) on delete cascade,
+  recipient     text not null,
+  phone         text not null,
+  postal_code   text not null,
+  address_line1 text not null,
+  address_line2 text,
+  is_default    boolean default false,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+```
 
-- `users`, `user_addresses`, `carts`, `cart_items`, `orders`, `order_items` 등:
-  - RLS ON
-  - 정책: `user_id = auth.uid()` 인 행만 SELECT/INSERT/UPDATE/DELETE 허용
-- FastAPI:
-  - `SUPABASE_SERVICE_ROLE_KEY` 사용 → RLS 우회 가능 (서버 전용 로직)
+#### 3. categories - 상품 카테고리
+```sql
+create table public.categories (
+  id            text primary key,
+  name_ko       text not null,
+  name_en       text,
+  icon_color    text default 'bg-gray-100',
+  display_order int default 0,
+  is_active     boolean default true,
+  created_at    timestamptz default now(),
+  updated_at    timestamptz default now()
+);
+```
+
+#### 4. products - 상품
+```sql
+create table public.products (
+  id                    bigserial primary key,
+  external_id           text,
+  mall_code             text,
+  name_ko               text not null,
+  name_original         text,
+  description_ko        text,
+  description_original  text,
+  category              text,  -- categories.id 참조
+  brand                 text,
+  image_url             text,
+  additional_images     jsonb default '[]',
+  currency              text default 'USD',
+  price_original        decimal(18,2),
+  price_krw             decimal(18,2) not null,
+  weight_kg             decimal(10,3),
+  dimensions            jsonb,
+  stock_status          text default 'IN_STOCK',
+  is_active             boolean default true,
+  created_at            timestamptz default now(),
+  updated_at            timestamptz default now()
+);
+```
+
+#### 5. carts - 장바구니
+```sql
+create table public.carts (
+  id         bigserial primary key,
+  user_id    uuid not null references public.users(id) on delete cascade,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(user_id)  -- 사용자당 하나의 장바구니
+);
+```
+
+#### 6. cart_items - 장바구니 항목
+```sql
+create table public.cart_items (
+  id         bigserial primary key,
+  cart_id    bigint not null references public.carts(id) on delete cascade,
+  user_id    uuid not null references public.users(id) on delete cascade,
+  product_id bigint not null references public.products(id),
+  quantity   int not null check (quantity > 0),
+  price_krw  decimal(18,2) not null,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now(),
+  unique(cart_id, product_id)  -- 중복 상품 방지
+);
+```
+
+#### 7. orders - 주문
+```sql
+create table public.orders (
+  id                  bigserial primary key,
+  order_number        text unique not null default concat('ORD', to_char(now(), 'YYYYMMDD'), lpad(nextval('order_number_seq')::text, 6, '0')),
+  user_id             uuid not null references public.users(id),
+  status              text not null default 'PENDING',  -- PENDING, PAID, SHIPPING, DELIVERED, CANCELLED
+  address_id          bigint references public.user_addresses(id),
+  shipping_address    jsonb not null,  -- 스냅샷 저장
+  payment_method      text,  -- CARD, KAKAO_PAY, NAVER_PAY
+  payment_status      text default 'PENDING',  -- PENDING, PAID, FAILED, REFUNDED
+  total_product_krw   decimal(18,2) not null,
+  total_shipping_krw  decimal(18,2) not null default 0,
+  total_duty_krw      decimal(18,2) not null default 0,
+  total_fee_krw       decimal(18,2) not null default 0,
+  total_pay_krw       decimal(18,2) not null,
+  paid_at             timestamptz,
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now()
+);
+```
+
+#### 8. order_items - 주문 상품
+```sql
+create table public.order_items (
+  id             bigserial primary key,
+  order_id       bigint not null references public.orders(id) on delete cascade,
+  product_id     bigint not null references public.products(id),
+  mall_code      text,
+  external_id    text,
+  name_snapshot  text not null,  -- 주문 시점 상품명
+  price_snapshot jsonb,  -- 주문 시점 상품 정보
+  quantity       int not null check (quantity > 0),
+  unit_price_krw decimal(18,2) not null,
+  subtotal_krw   decimal(18,2) not null,
+  created_at     timestamptz default now()
+);
+```
+
+#### 9. shipments - 배송 정보
+```sql
+create table public.shipments (
+  id                  bigserial primary key,
+  order_id            bigint not null references public.orders(id) on delete cascade,
+  tracking_number     text,
+  carrier_code        text,
+  carrier_name        text,
+  status              text default 'PREPARING',  -- PREPARING, SHIPPED, IN_TRANSIT, DELIVERED
+  origin_country      text default 'US',
+  destination_country text default 'KR',
+  shipped_at          timestamptz,
+  delivered_at        timestamptz,
+  last_updated_at     timestamptz,
+  raw_tracking        jsonb,  -- 외부 API 원본 데이터
+  created_at          timestamptz default now(),
+  updated_at          timestamptz default now()
+);
+```
+
+### 6.2 인덱스 전략
+
+```sql
+-- 검색 및 필터링 성능 최적화
+CREATE INDEX idx_products_mall_external ON products(mall_code, external_id);
+CREATE INDEX idx_products_category ON products(category);
+CREATE INDEX idx_products_brand ON products(brand);
+CREATE INDEX idx_products_active ON products(is_active);
+CREATE INDEX idx_products_name_ko ON products USING gin(to_tsvector('simple', name_ko));
+CREATE INDEX idx_products_price_range ON products(price_krw);
+
+-- 사용자별 조회 최적화
+CREATE INDEX idx_user_addresses_user_id ON user_addresses(user_id);
+CREATE INDEX idx_cart_items_cart_id ON cart_items(cart_id);
+CREATE INDEX idx_cart_items_user_id ON cart_items(user_id);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
+CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_shipments_order_id ON shipments(order_id);
+CREATE INDEX idx_shipments_tracking ON shipments(tracking_number);
+
+-- 카테고리 정렬
+CREATE INDEX idx_categories_active ON categories(is_active);
+CREATE INDEX idx_categories_order ON categories(display_order);
+```
+
+### 6.3 Row Level Security (RLS) 정책
+
+#### 사용자 데이터 보호
+```sql
+-- Users: 본인 데이터만 접근
+CREATE POLICY "Users can view own profile" ON users FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON users FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- User Addresses: 본인 주소만 관리
+CREATE POLICY "Users can view own addresses" ON user_addresses FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert own addresses" ON user_addresses FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Users can update own addresses" ON user_addresses FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete own addresses" ON user_addresses FOR DELETE USING (auth.uid() = user_id);
+
+-- Carts & Cart Items: 본인 장바구니만 관리
+CREATE POLICY "Users can manage own cart" ON carts FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can manage own cart items" ON cart_items FOR ALL USING (auth.uid() = user_id);
+
+-- Orders: 본인 주문만 조회 (생성은 서버에서만)
+CREATE POLICY "Users can view own orders" ON orders FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can view own order items" ON order_items FOR SELECT 
+  USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = order_items.order_id AND orders.user_id = auth.uid()));
+CREATE POLICY "Users can view own shipments" ON shipments FOR SELECT 
+  USING (EXISTS (SELECT 1 FROM orders WHERE orders.id = shipments.order_id AND orders.user_id = auth.uid()));
+```
+
+#### 공개 데이터
+```sql
+-- Products & Categories: 모든 사용자 조회 가능
+CREATE POLICY "Anyone can view products" ON products FOR SELECT USING (true);
+CREATE POLICY "Anyone can view categories" ON categories FOR SELECT USING (true);
+```
+
+#### 서버 권한
+- FastAPI는 `SUPABASE_SERVICE_ROLE_KEY` 사용으로 RLS 우회
+- 주문 생성, 재고 업데이트, 관리자 기능 등 서버에서만 수행
+
+### 6.4 트리거 및 함수
+
+#### updated_at 자동 업데이트
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 각 테이블에 트리거 적용
+CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_products_updated_at BEFORE UPDATE ON products
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+-- (다른 테이블도 동일하게 적용)
+```
+
+#### 사용자 가입 시 자동 프로필 및 장바구니 생성
+```sql
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+  -- 사용자 프로필 생성
+  INSERT INTO public.users (id, email, created_at, updated_at)
+  VALUES (new.id, new.email, now(), now())
+  ON CONFLICT (id) DO NOTHING;
+  
+  -- 장바구니 자동 생성
+  INSERT INTO public.carts (user_id, created_at, updated_at)
+  VALUES (new.id, now(), now())
+  ON CONFLICT (user_id) DO NOTHING;
+  
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
+
+### 6.5 샘플 데이터
+
+- **카테고리 5개**: 전자기기, 패션, 뷰티, 스포츠, 홈/리빙
+- **상품 15개**: 각 카테고리별 3개씩 인기 상품
+  - 전자기기: 에어팟 프로, 소니 헤드폰, 다이슨 에어랩
+  - 패션: 나이키 조던, 노스페이스 눕시, 루이비통 네버풀
+  - 뷰티: SK-II 에센스, 라메르 크림, YSL 립스틱
+  - 스포츠: 가민 워치, 예티 텀블러, 룰루레몬 레깅스
+  - 홈/리빙: 네스프레소, 르크루제, 다이슨 청소기
 
 ---
 

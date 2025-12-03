@@ -21,6 +21,17 @@ export interface Product {
   updated_at: string | null
 }
 
+export interface Category {
+  id: string
+  name_ko: string
+  name_en: string | null
+  icon_color: string | null
+  display_order: number | null
+  is_active: boolean | null
+  created_at: string | null
+  updated_at: string | null
+}
+
 export interface User {
   id: string
   email: string
