@@ -129,7 +129,7 @@ CREATE SEQUENCE IF NOT EXISTS order_number_seq START 1;
 -- 1.6 Orders 테이블
 CREATE TABLE IF NOT EXISTS public.orders (
   id BIGSERIAL PRIMARY KEY,
-  order_number TEXT UNIQUE NOT NULL DEFAULT CONCAT('ORD', TO_CHAR(NOW(), 'YYYYMMDD'), LPAD(NEXTVAL('order_number_seq')::TEXT, 6, '0')),
+  order_number TEXT UNIQUE NOT NULL,
   user_id UUID NOT NULL REFERENCES public.users(id),
   status TEXT NOT NULL DEFAULT 'PENDING',
   address_id BIGINT REFERENCES public.user_addresses(id),

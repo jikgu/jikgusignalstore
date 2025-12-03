@@ -91,6 +91,8 @@ export interface Order {
   paid_at: string | null
   created_at: string | null
   updated_at: string | null
+  order_items?: any[]
+  itemCount?: number
 }
 
 export interface OrderItem {
