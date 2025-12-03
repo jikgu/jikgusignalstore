@@ -1,7 +1,8 @@
 # spec.md – 직구 시그널 스토어 (Jikgu Signal Store) 기술 스펙
 
-> **문서 버전**: 1.1.0  
-> **최종 업데이트**: 2024-12-03  
+> **문서 버전**: 2.0.0  
+> **최종 업데이트**: 2024-12-04  
+> **구현 상태**: 완료  
 > **관련 문서**: `prd.md`, ERD, Swagger/OpenAPI 스펙  
 > **Vercel 프로젝트명**: `jikgusignalstore`
 
