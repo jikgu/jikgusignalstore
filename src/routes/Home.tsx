@@ -1,4 +1,40 @@
+import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabaseClient'
+import type { Product } from '../types/database'
+
 export default function Home() {
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetchFeaturedProducts()
+  }, [])
+
+  const fetchFeaturedProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('is_active', true)
+        .limit(6)
+
+      if (error) throw error
+      setFeaturedProducts(data || [])
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const categories = [
+    { name: '전자기기', slug: 'electronics', color: 'bg-blue-100' },
+    { name: '패션', slug: 'fashion', color: 'bg-pink-100' },
+    { name: '뷰티', slug: 'beauty', color: 'bg-green-100' },
+    { name: '스포츠', slug: 'sports', color: 'bg-yellow-100' },
+  ]
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <section className="mb-12">
@@ -9,48 +45,72 @@ export default function Home() {
           <p className="text-xl mb-6">
             여러 해외 쇼핑몰을 한 번에 검색하고, 원화로 간편 결제하세요
           </p>
-          <button className="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition">
+          <Link 
+            to="/search"
+            className="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition"
+          >
             지금 시작하기
-          </button>
+          </Link>
         </div>
       </section>
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">인기 카테고리</h2>
         <div className="grid grid-cols-4 gap-6">
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
-            <div className="w-16 h-16 bg-blue-100 rounded-lg mb-4"></div>
-            <h3 className="font-semibold">전자기기</h3>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
-            <div className="w-16 h-16 bg-pink-100 rounded-lg mb-4"></div>
-            <h3 className="font-semibold">패션</h3>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
-            <div className="w-16 h-16 bg-green-100 rounded-lg mb-4"></div>
-            <h3 className="font-semibold">뷰티</h3>
-          </div>
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition cursor-pointer">
-            <div className="w-16 h-16 bg-yellow-100 rounded-lg mb-4"></div>
-            <h3 className="font-semibold">스포츠</h3>
-          </div>
+          {categories.map((category) => (
+            <Link
+              key={category.slug}
+              to={`/category/${category.slug}`}
+              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition"
+            >
+              <div className={`w-16 h-16 ${category.color} rounded-lg mb-4`}></div>
+              <h3 className="font-semibold">{category.name}</h3>
+            </Link>
+          ))}
         </div>
       </section>
 
       <section className="mb-12">
         <h2 className="text-2xl font-bold mb-6">추천 상품</h2>
-        <div className="grid grid-cols-3 gap-6">
-          {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition">
-              <div className="w-full h-48 bg-gray-200"></div>
-              <div className="p-4">
-                <h3 className="font-semibold mb-2">상품명 {i}</h3>
-                <p className="text-gray-600 text-sm mb-2">브랜드명</p>
-                <p className="text-lg font-bold">₩ 99,900</p>
+        {loading ? (
+          <div className="grid grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+                <div className="w-full h-48 bg-gray-200"></div>
+                <div className="p-4">
+                  <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-6">
+            {featuredProducts.map((product) => (
+              <Link
+                key={product.id}
+                to={`/product/${product.id}`}
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition"
+              >
+                <div className="w-full h-48 bg-gray-200 relative">
+                  {product.image_url && (
+                    <img
+                      src={product.image_url}
+                      alt={product.name_ko}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold mb-2 line-clamp-2">{product.name_ko}</h3>
+                  <p className="text-gray-600 text-sm mb-2">{product.brand}</p>
+                  <p className="text-lg font-bold">₩ {product.price_krw.toLocaleString()}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mb-12 bg-gray-100 rounded-lg p-8">
