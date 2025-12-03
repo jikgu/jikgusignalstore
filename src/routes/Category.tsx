@@ -26,19 +26,8 @@ export default function Category() {
         query = query.eq('category', slug)
       }
 
-      // Apply price filters
-      if (priceFilter.length > 0) {
-        const conditions: string[] = []
-        if (priceFilter.includes('0-50000')) {
-          conditions.push('price_krw.lte.50000')
-        }
-        if (priceFilter.includes('50000-100000')) {
-          conditions.push('price_krw.gte.50000,price_krw.lte.100000')
-        }
-        if (priceFilter.includes('100000+')) {
-          conditions.push('price_krw.gte.100000')
-        }
-      }
+      // Apply price filters - fetch all and filter client-side for OR conditions
+      // We'll apply filters after fetching data
 
       // Apply sorting
       switch (sortBy) {
@@ -58,7 +47,20 @@ export default function Category() {
       const { data, error } = await query
 
       if (error) throw error
-      setProducts(data || [])
+      
+      // Apply price filters on client side
+      let filteredData = data || []
+      if (priceFilter.length > 0) {
+        filteredData = filteredData.filter(product => {
+          const price = product.price_krw
+          if (priceFilter.includes('0-50000') && price <= 50000) return true
+          if (priceFilter.includes('50000-100000') && price > 50000 && price <= 100000) return true
+          if (priceFilter.includes('100000+') && price > 100000) return true
+          return false
+        })
+      }
+      
+      setProducts(filteredData)
     } catch (error) {
       console.error('Error fetching products:', error)
     } finally {
