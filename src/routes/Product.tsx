@@ -53,6 +53,22 @@ export default function Product() {
 
     setAddingToCart(true)
     try {
+      // First, ensure user profile exists in users table
+      const { error: profileError } = await supabase
+        .from('users')
+        .upsert({ 
+          id: user.id, 
+          email: user.email || '',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+      
+      if (profileError) {
+        console.error('Error creating user profile:', profileError)
+        throw profileError
+      }
+
       // Get or create cart
       let { data: cart, error: cartError } = await supabase
         .from('carts')

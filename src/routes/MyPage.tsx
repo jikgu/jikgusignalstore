@@ -11,16 +11,57 @@ export default function MyPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        ensureUserProfile(session.user)
+      }
     })
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        ensureUserProfile(session.user)
+      }
     })
 
     return () => subscription.unsubscribe()
   }, [])
+
+  const ensureUserProfile = async (user: User) => {
+    try {
+      // Ensure user profile exists in users table
+      const { error: profileError } = await supabase
+        .from('users')
+        .upsert({ 
+          id: user.id, 
+          email: user.email || '',
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'id'
+        })
+      
+      if (profileError) {
+        console.error('Error ensuring user profile:', profileError)
+      }
+
+      // Ensure cart exists
+      const { error: cartError } = await supabase
+        .from('carts')
+        .upsert({ 
+          user_id: user.id,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'user_id'
+        })
+      
+      if (cartError) {
+        console.error('Error ensuring cart:', cartError)
+      }
+    } catch (error) {
+      console.error('Error in ensureUserProfile:', error)
+    }
+  }
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
