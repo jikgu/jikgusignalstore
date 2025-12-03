@@ -30,7 +30,7 @@ export default function Product() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('id', productId)
+        .eq('id', parseInt(productId))
         .single()
 
       if (error) throw error
@@ -109,9 +109,15 @@ export default function Product() {
       }
 
       alert('장바구니에 추가되었습니다!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding to cart:', error)
-      alert('장바구니 추가에 실패했습니다.')
+      if (error.code === '23505') {
+        alert('이미 장바구니에 있는 상품입니다.')
+      } else if (error.message) {
+        alert(`장바구니 추가 실패: ${error.message}`)
+      } else {
+        alert('장바구니 추가에 실패했습니다.')
+      }
     } finally {
       setAddingToCart(false)
     }
