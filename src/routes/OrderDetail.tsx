@@ -236,35 +236,33 @@ export default function OrderDetail() {
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-lg font-semibold mb-4">배송 추적</h2>
             
-            <div className="relative">
-              <div className="space-y-6">
-                {shippingSteps.map((step, index) => (
-                  <div key={index} className="flex gap-4 relative">
-                    {/* Connect line to next item */}
-                    {index < shippingSteps.length - 1 && (
-                      <div 
-                        className="absolute left-4 top-8 w-0.5 bg-gray-300" 
-                        style={{ height: '6rem' }}
-                      />
-                    )}
-                    
-                    <div className={`w-8 h-8 ${step.completed ? getStatusColor(step.status) : 'bg-gray-400'} rounded-full flex items-center justify-center text-white text-sm relative z-10 flex-shrink-0`}>
-                      {step.completed ? '✓' : ''}
+            <div>
+              {shippingSteps.map((step, index) => (
+                <div key={index} className="relative">
+                  <div className="flex gap-4">
+                    <div className="relative flex flex-col items-center">
+                      <div className={`w-8 h-8 ${step.completed ? getStatusColor(step.status) : 'bg-gray-400'} rounded-full flex items-center justify-center text-white text-sm z-10 flex-shrink-0`}>
+                        {step.completed ? '✓' : ''}
+                      </div>
+                      {/* Line to next item */}
+                      {index < shippingSteps.length - 1 && (
+                        <div className="w-0.5 bg-gray-300 flex-grow mt-2" style={{ height: '4rem' }} />
+                      )}
                     </div>
-                    <div className="flex-1 min-h-[4rem]">
+                    <div className={`flex-1 pb-6 ${index === shippingSteps.length - 1 ? 'pb-0' : ''}`}>
                       <p className={`font-medium ${!step.completed ? 'text-gray-400' : ''}`}>
                         {step.label}
                       </p>
                       {step.date && (
-                        <p className="text-sm text-gray-600">{step.date}</p>
+                        <p className="text-sm text-gray-600 mt-1">{step.date}</p>
                       )}
                       {step.trackingNumber && (
-                        <p className="text-sm text-gray-500">운송장번호: {step.trackingNumber}</p>
+                        <p className="text-sm text-gray-500 mt-1">운송장번호: {step.trackingNumber}</p>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </div>
           </div>
 
