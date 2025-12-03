@@ -1,6 +1,6 @@
 # prd.md – 직구 시그널 스토어 (Jikgu Signal Store)
 
-> **문서 버전**: 2.0.0  
+> **문서 버전**: 2.1.0  
 > **최종 업데이트**: 2024-12-04  
 > **상태**: 구현 완료  
 > **관련 문서**: `spec.md` (기술 스펙), `database.sql` (데이터베이스 스키마)
@@ -244,9 +244,13 @@
 ### 8.1 프론트엔드
 - **Framework**: Vite + React + TypeScript
 - **Styling**: TailwindCSS
-- **State**: React Query + Zustand
+- **State**: React Hooks
 - **Auth**: Supabase Auth
 - **API**: supabase-js (anon key)
+- **UI Components**: 
+  - Custom Modal 컴포넌트 (alert 대체)
+  - useModal Hook (모달 상태 관리)
+  - React Portal을 활용한 모달 렌더링
 
 ### 8.2 백엔드
 - **Framework**: FastAPI (Python)
@@ -354,6 +358,8 @@
 - 동적 카테고리 메뉴
 - RLS 기반 데이터 보안
 - 반응형 UI
+- 모던 모달 시스템 (브라우저 alert 대체)
+- 사용자 친화적 알림 메시지
 
 ### 샘플 데이터
 - 5개 카테고리 (전자기기, 패션, 뷰티, 스포츠, 홈/리빙)

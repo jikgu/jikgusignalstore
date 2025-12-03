@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import type { CartItem } from '../types/database'
 import type { User } from '@supabase/supabase-js'
+import { useModal } from '../hooks/useModal'
 
 export default function Cart() {
   const navigate = useNavigate()
@@ -10,6 +11,7 @@ export default function Cart() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [updating, setUpdating] = useState(false)
+  const { Modal, showError, showSuccess, showConfirm, showWarning } = useModal()
 
   useEffect(() => {
     checkUserAndFetchCart()
@@ -65,15 +67,16 @@ export default function Cart() {
       )
     } catch (error) {
       console.error('Error updating quantity:', error)
-      alert('수량 변경에 실패했습니다.')
+      showError('수량 변경에 실패했습니다.')
     } finally {
       setUpdating(false)
     }
   }
 
   const removeItem = async (itemId: number) => {
-    setUpdating(true)
-    try {
+    showConfirm('상품을 삭제하시겠습니까?', async () => {
+      setUpdating(true)
+      try {
       const { error } = await supabase
         .from('cart_items')
         .delete()
@@ -83,12 +86,14 @@ export default function Cart() {
       
       // Update local state
       setCartItems(items => items.filter(item => item.id !== itemId))
+      showSuccess('상품이 삭제되었습니다.')
     } catch (error) {
       console.error('Error removing item:', error)
-      alert('상품 삭제에 실패했습니다.')
+      showError('상품 삭제에 실패했습니다.')
     } finally {
       setUpdating(false)
     }
+    })
   }
 
   const calculateTotals = () => {
@@ -105,13 +110,13 @@ export default function Cart() {
 
   const handleCheckout = () => {
     if (!user) {
-      alert('로그인이 필요합니다.')
-      navigate('/mypage')
+      showWarning('로그인이 필요합니다.')
+      setTimeout(() => navigate('/mypage'), 1500)
       return
     }
     
     if (cartItems.length === 0) {
-      alert('장바구니가 비어있습니다.')
+      showWarning('장바구니가 비어있습니다.')
       return
     }
 
@@ -165,7 +170,9 @@ export default function Cart() {
   const totals = calculateTotals()
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <Modal />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold mb-8">장바구니</h1>
 
       {cartItems.length === 0 ? (
@@ -282,5 +289,6 @@ export default function Cart() {
         </div>
       )}
     </div>
+    </>
   )
 }

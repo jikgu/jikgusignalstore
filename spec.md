@@ -1,6 +1,6 @@
 # spec.md – 직구 시그널 스토어 (Jikgu Signal Store) 기술 스펙
 
-> **문서 버전**: 2.0.0  
+> **문서 버전**: 2.1.0  
 > **최종 업데이트**: 2024-12-04  
 > **구현 상태**: 완료  
 > **관련 문서**: `prd.md`, ERD, Swagger/OpenAPI 스펙  
@@ -33,9 +33,12 @@
 ### 2.1 프론트엔드
 
 - 프레임워크: Vite + React + TypeScript
-- 라우팅: React Router
+- 라우팅: React Router v6
 - 스타일: TailwindCSS
-- 상태 관리: React Query / Zustand (선택)
+- 상태 관리: React Hooks (useState, useEffect)
+- UI 컴포넌트:
+  - Custom Modal 컴포넌트 (React Portal 기반)
+  - useModal Hook (모달 상태 관리)
 - API 호출:
   - Supabase JS SDK (`@supabase/supabase-js`)
   - 브라우저 `fetch` 를 이용해 `/api/...` FastAPI 호출
@@ -118,7 +121,27 @@ jikgusignalstore/
 - `/help` – 고객센터
 - `/admin/*` – 관리자용 페이지(권한 필요)
 
-### 4.2 Supabase 클라이언트
+### 4.2 Modal 컴포넌트 시스템
+
+#### Modal 컴포넌트 (`src/components/Modal.tsx`)
+- React Portal을 사용한 모달 렌더링 (DOM 트리 외부)
+- 타입별 스타일링: success(초록), error(빨강), warning(노랑), info(파랑)
+- ESC 키 및 배경 클릭으로 닫기 지원
+- 확인/취소 버튼 구성 가능
+
+#### useModal Hook (`src/hooks/useModal.tsx`)
+```tsx
+export function useModal() {
+  // 상태 관리 및 헬퍼 함수 제공
+  showSuccess(message: string) // 성공 메시지
+  showError(message: string) // 에러 메시지 
+  showWarning(message: string) // 경고 메시지
+  showInfo(message: string) // 정보 메시지
+  showConfirm(message: string, onConfirm: () => void) // 확인 대화상자
+}
+```
+
+### 4.3 Supabase 클라이언트
 
 ```ts
 // src/lib/supabaseClient.ts
@@ -130,7 +153,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY!;
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 ```
 
-### 4.3 프론트 → Supabase 직접 호출 범위
+### 4.4 프론트 → Supabase 직접 호출 범위
 
 - Auth:
   - 회원가입, 로그인, 로그아웃, 세션 유지
@@ -141,7 +164,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 - 주문 조회:
   - `orders`, `order_items` – **조회 전용** (본인 주문만, RLS)
 
-### 4.4 프론트 → FastAPI (`/api`) 호출 범위
+### 4.5 프론트 → FastAPI (`/api`) 호출 범위
 
 - `/api/checkout` – 결제 & 주문 생성 전체 플로우
 - `/api/admin/*` – 관리자용 상품/주문 관리

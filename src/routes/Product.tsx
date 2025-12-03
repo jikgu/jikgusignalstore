@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabaseClient'
 import type { Product } from '../types/database'
 import type { User } from '@supabase/supabase-js'
+import { useModal } from '../hooks/useModal'
 
 export default function Product() {
   const { productId } = useParams()
@@ -12,6 +13,7 @@ export default function Product() {
   const [loading, setLoading] = useState(true)
   const [user, setUser] = useState<User | null>(null)
   const [addingToCart, setAddingToCart] = useState(false)
+  const { Modal, showSuccess, showError, showWarning } = useModal()
 
   useEffect(() => {
     fetchProduct()
@@ -44,8 +46,8 @@ export default function Product() {
 
   const handleAddToCart = async () => {
     if (!user) {
-      alert('로그인이 필요합니다.')
-      navigate('/mypage')
+      showWarning('로그인이 필요합니다.')
+      setTimeout(() => navigate('/mypage'), 1500)
       return
     }
 
@@ -124,15 +126,15 @@ export default function Product() {
         if (insertError) throw insertError
       }
 
-      alert('장바구니에 추가되었습니다!')
+      showSuccess('장바구니에 추가되었습니다!')
     } catch (error: any) {
       console.error('Error adding to cart:', error)
       if (error.code === '23505') {
-        alert('이미 장바구니에 있는 상품입니다.')
+        showWarning('이미 장바구니에 있는 상품입니다.')
       } else if (error.message) {
-        alert(`장바구니 추가 실패: ${error.message}`)
+        showError(`장바구니 추가 실패: ${error.message}`)
       } else {
-        alert('장바구니 추가에 실패했습니다.')
+        showError('장바구니 추가에 실패했습니다.')
       }
     } finally {
       setAddingToCart(false)
@@ -174,7 +176,9 @@ export default function Product() {
   const totalPrice = product.price_krw * quantity + estimatedDuty + shippingFee
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <Modal />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="grid grid-cols-2 gap-12">
         <div>
           <div className="bg-gray-200 rounded-lg h-96 mb-4 relative">
@@ -307,5 +311,6 @@ export default function Product() {
         </div>
       </div>
     </div>
+    </>
   )
 }

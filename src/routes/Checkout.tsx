@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
 import type { CartItem, UserAddress } from '../types/database'
 import type { User } from '@supabase/supabase-js'
+import { useModal } from '../hooks/useModal'
 
 export default function Checkout() {
   const navigate = useNavigate()
@@ -21,6 +22,7 @@ export default function Checkout() {
     addressLine2: '',
     customsNumber: ''
   })
+  const { Modal, showSuccess, showError, showWarning } = useModal()
 
   useEffect(() => {
     checkUserAndFetchData()
@@ -46,8 +48,8 @@ export default function Checkout() {
 
       if (cartError) throw cartError
       if (!cartData || cartData.length === 0) {
-        alert('장바구니가 비어있습니다.')
-        navigate('/cart')
+        showWarning('장바구니가 비어있습니다.')
+        setTimeout(() => navigate('/cart'), 1500)
         return
       }
       setCartItems(cartData)
@@ -104,12 +106,12 @@ export default function Checkout() {
 
   const handleCheckout = async () => {
     if (!user || !formData.recipient || !formData.phone || !formData.postalCode || !formData.addressLine1) {
-      alert('배송지 정보를 모두 입력해주세요.')
+      showWarning('배송지 정보를 모두 입력해주세요.')
       return
     }
 
     if (!formData.customsNumber) {
-      alert('개인통관고유부호를 입력해주세요.')
+      showWarning('개인통관고유부호를 입력해주세요.')
       return
     }
 
@@ -218,11 +220,11 @@ export default function Checkout() {
 
       if (clearError) throw clearError
 
-      alert('주문이 완료되었습니다!')
-      navigate('/orders')
+      showSuccess('주문이 완료되었습니다!')
+      setTimeout(() => navigate('/orders'), 1500)
     } catch (error: any) {
       console.error('Error creating order:', error)
-      alert(`주문 처리 중 오류가 발생했습니다: ${error.message}`)
+      showError(`주문 처리 중 오류가 발생했습니다: ${error.message}`)
     } finally {
       setProcessing(false)
     }
@@ -247,7 +249,9 @@ export default function Checkout() {
   const totals = calculateTotals()
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <>
+      <Modal />
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-3xl font-bold mb-8">결제하기</h1>
 
       <div className="grid grid-cols-3 gap-8">
@@ -418,5 +422,6 @@ export default function Checkout() {
         </div>
       </div>
     </div>
+    </>
   )
 }
