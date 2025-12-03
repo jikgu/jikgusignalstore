@@ -2,6 +2,7 @@ import { useParams, Link } from 'react-router-dom'
 
 export default function OrderDetail() {
   const { orderId } = useParams()
+  console.log('Order ID:', orderId)
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
