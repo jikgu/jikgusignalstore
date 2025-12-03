@@ -237,25 +237,21 @@ export default function OrderDetail() {
             <h2 className="text-lg font-semibold mb-4">배송 추적</h2>
             
             <div className="relative">
-              {/* Timeline line */}
-              {shippingSteps.length > 1 && (
-                <div 
-                  className="absolute left-4 w-0.5 bg-gray-300" 
-                  style={{ 
-                    top: '2rem', 
-                    bottom: '2rem',
-                    height: `${(shippingSteps.length - 1) * 6}rem`
-                  }}
-                />
-              )}
-              
-              <div className="space-y-6 relative">
+              <div className="space-y-6">
                 {shippingSteps.map((step, index) => (
                   <div key={index} className="flex gap-4 relative">
-                    <div className={`w-8 h-8 ${step.completed ? getStatusColor(step.status) : 'bg-gray-400'} rounded-full flex items-center justify-center text-white text-sm z-10 flex-shrink-0`}>
+                    {/* Connect line to next item */}
+                    {index < shippingSteps.length - 1 && (
+                      <div 
+                        className="absolute left-4 top-8 w-0.5 bg-gray-300" 
+                        style={{ height: '6rem' }}
+                      />
+                    )}
+                    
+                    <div className={`w-8 h-8 ${step.completed ? getStatusColor(step.status) : 'bg-gray-400'} rounded-full flex items-center justify-center text-white text-sm relative z-10 flex-shrink-0`}>
                       {step.completed ? '✓' : ''}
                     </div>
-                    <div className="flex-1 pb-2">
+                    <div className="flex-1 min-h-[4rem]">
                       <p className={`font-medium ${!step.completed ? 'text-gray-400' : ''}`}>
                         {step.label}
                       </p>
