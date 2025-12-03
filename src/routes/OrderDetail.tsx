@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabaseClient'
-import type { Order, OrderItem, Shipment, User } from '../types/database'
+import type { Order, OrderItem, Shipment } from '../types/database'
 
 interface OrderDetailData extends Order {
   order_items: (OrderItem & {
@@ -18,7 +18,6 @@ export default function OrderDetail() {
   const navigate = useNavigate()
   const [order, setOrder] = useState<OrderDetailData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<User | null>(null)
 
   useEffect(() => {
     checkUserAndFetchOrder()
@@ -31,7 +30,6 @@ export default function OrderDetail() {
         navigate('/mypage')
         return
       }
-      setUser(user)
 
       if (!orderId) return
 
