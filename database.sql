@@ -235,8 +235,11 @@ DROP POLICY IF EXISTS "Anyone can view products" ON public.products;
 DROP POLICY IF EXISTS "Users can manage own cart" ON public.carts;
 DROP POLICY IF EXISTS "Users can manage own cart items" ON public.cart_items;
 DROP POLICY IF EXISTS "Users can view own orders" ON public.orders;
+DROP POLICY IF EXISTS "Users can create own orders" ON public.orders;
 DROP POLICY IF EXISTS "Users can view own order items" ON public.order_items;
+DROP POLICY IF EXISTS "Users can create own order items" ON public.order_items;
 DROP POLICY IF EXISTS "Users can view own shipments" ON public.shipments;
+DROP POLICY IF EXISTS "Users can create own shipments" ON public.shipments;
 DROP POLICY IF EXISTS "Anyone can view categories" ON public.categories;
 
 -- 2.1 Users 테이블 정책
@@ -289,6 +292,10 @@ CREATE POLICY "Users can view own orders"
   ON public.orders FOR SELECT 
   USING (auth.uid() = user_id);
 
+CREATE POLICY "Users can create own orders" 
+  ON public.orders FOR INSERT 
+  WITH CHECK (auth.uid() = user_id);
+
 -- 2.7 Order Items 테이블 정책
 CREATE POLICY "Users can view own order items" 
   ON public.order_items FOR SELECT 
@@ -300,10 +307,30 @@ CREATE POLICY "Users can view own order items"
     )
   );
 
+CREATE POLICY "Users can create own order items" 
+  ON public.order_items FOR INSERT 
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.orders 
+      WHERE orders.id = order_items.order_id 
+      AND orders.user_id = auth.uid()
+    )
+  );
+
 -- 2.8 Shipments 테이블 정책
 CREATE POLICY "Users can view own shipments" 
   ON public.shipments FOR SELECT 
   USING (
+    EXISTS (
+      SELECT 1 FROM public.orders 
+      WHERE orders.id = shipments.order_id 
+      AND orders.user_id = auth.uid()
+    )
+  );
+
+CREATE POLICY "Users can create own shipments" 
+  ON public.shipments FOR INSERT 
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM public.orders 
       WHERE orders.id = shipments.order_id 
